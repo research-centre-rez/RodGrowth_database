@@ -4,8 +4,8 @@ import pandas as pd
 from pathlib import Path
 import sys
 
-from db_processor import build_coordinate_map, process_rust_data_safely
-from duplicate_finder import highlight_ps_variants
+from src.db_processor import build_coordinate_map, process_rust_data_safely
+from src.duplicate_finder import highlight_ps_variants
 
 # Nastavení logování podle standardů
 logging.basicConfig(
