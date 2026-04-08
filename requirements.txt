@@ -1,0 +1,11 @@
+# Core data manipulation library required for DataFrame operations
+pandas>=2.0.0
+
+# Excel file engine required by pandas for reading and writing .xlsx files
+openpyxl>=3.1.0
+
+# Testing framework required for the CI pipeline
+pytest>=7.0.0
+
+# Linting tool required for enforcing PEP8 compliance
+flake8>=6.0.0
