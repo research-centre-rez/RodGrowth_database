@@ -5,8 +5,7 @@ import openpyxl
 from unittest.mock import patch
 
 # Import the functions from your src modules
-# Uprav cesty importu podle skutečné struktury tvého projektu
-from src.db_processor import build_coordinate_map, process_rust_data_safely
+from src.db_processor import build_coordinate_map
 from src.duplicate_finder import extract_base_ps, highlight_ps_variants
 from src.main import main
 
