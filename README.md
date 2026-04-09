@@ -1,4 +1,4 @@
-### RodGrowth_database
+# RodGrowth_database
 
 A modular backend pipeline designed for automated research data processing, database maintenance, and data cleaning. This system is built to process Excel datasets (specifically `RustDD_Data`), resolve missing physical coordinates, and eliminate duplicate pattern sample variants, preparing the data for further interactive visualization and organizational GUI integration.
 
