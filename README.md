@@ -1,4 +1,4 @@
-RodGrowth_database
+### RodGrowth_database
 
 A modular backend pipeline designed for automated research data processing, database maintenance, and data cleaning. This system is built to process Excel datasets (specifically `RustDD_Data`), resolve missing physical coordinates, and eliminate duplicate pattern sample variants, preparing the data for further interactive visualization and organizational GUI integration.
 
@@ -57,8 +57,8 @@ To check for PEP8 compliance and cyclomatic complexity limits:
 
 Bash
 flake8 src tests --count --select=E9,F63,F7,F82,C901,E203 --show-source --statistics
-Project Structure
 
+Project Structure
 .
 ├── src/
 │   ├── __init__.py
@@ -67,13 +67,13 @@ Project Structure
 │   └── main.py              # CLI entry point and pipeline orchestration
 ├── tests/
 │   ├── __init__.py
-│   ├── test_db_processor.py
 │   └── test_pipeline.py
 ├── data/                    # Directory for local datasets (git-ignored)
 ├── .github/workflows/       # CI/CD configurations
 ├── .gitignore
 ├── requirements.txt
 └── README.md
+
 Versioning and Contribution
 All contributors must adhere to the internal organizational standards described in versioning.md and templates.md.
 
