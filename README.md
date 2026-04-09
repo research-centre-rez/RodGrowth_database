@@ -21,44 +21,55 @@ A modular backend pipeline designed for automated research data processing, data
    ```bash
    git clone <repository_url>
    cd <repository_name>
-Create and activate a virtual environment:
+   ```
 
-Bash
-python -m venv venv
-# On Windows:
-venv\Scripts\activate
-# On Linux/macOS:
-source venv/bin/activate
-Install the required dependencies:
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   # On Windows:
+   venv\Scripts\activate
+   # On Linux/macOS:
+   source venv/bin/activate
+   ```
 
-Bash
-pip install -r requirements.txt
-(Note: Ensure your requirements.txt includes pandas, openpyxl, pytest, and flake8)
+3. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Usage
-The pipeline is executed via the command-line interface.
+## Usage
 
-Important: Ensure that the target Excel files are fully closed in your spreadsheet editor before running the script to prevent PermissionError.
+The pipeline is executed via the command-line interface. 
 
-Bash
+**Important:** Ensure that the target Excel files are fully closed in your spreadsheet editor before running the script to prevent `PermissionError`.
+
+```bash
 python -m src.main --input "path/to/input.xlsx" --output "path/to/output.xlsx" --key "path/to/key.xlsx"
-If the input, output, and key data are all contained within the same file (e.g., in a data folder), provide the identical path for all arguments:
+```
 
-Bash
+If the input, output, and key data are all contained within the same file (e.g., in a `data` folder), provide the identical path for all arguments:
+
+```bash
 python -m src.main --input "data/dataset.xlsx" --output "data/dataset.xlsx" --key "data/dataset.xlsx"
-Testing and Linting
+```
+
+## Testing and Linting
+
 This project enforces strict quality gates. Before creating a Pull Request, ensure all tests and linter checks pass locally.
 
 To run the test suite:
-
-Bash
+```bash
 pytest
+```
+
 To check for PEP8 compliance and cyclomatic complexity limits:
-
-Bash
+```bash
 flake8 src tests --count --select=E9,F63,F7,F82,C901,E203 --show-source --statistics
+```
 
-Project Structure
+## Project Structure
+
+```text
 .
 ├── src/
 │   ├── __init__.py
@@ -73,16 +84,13 @@ Project Structure
 ├── .gitignore
 ├── requirements.txt
 └── README.md
+```
 
-Versioning and Contribution
-All contributors must adhere to the internal organizational standards described in versioning.md and templates.md.
+## Versioning and Contribution
 
-Use proper branching strategies (feature/, bugfix/).
-
-Submit Pull Requests for code reviews.
-
-Ensure Git tags are used for release versions.
-
-All code must utilize English docstrings following the Google Python Style Guide.
-
-Use the standard logging module instead of print statements.
+All contributors must adhere to the internal organizational standards described in `versioning.md` and `templates.md`. 
+* Use proper branching strategies (`feature/`, `bugfix/`).
+* Submit Pull Requests for code reviews.
+* Ensure Git tags are used for release versions.
+* All code must utilize English docstrings following the Google Python Style Guide.
+* Use the standard logging module instead of print statements.
