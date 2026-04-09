@@ -5,7 +5,7 @@ A modular backend pipeline designed for automated research data processing, data
 ## Features
 
 * **Automated Coordinate Resolution:** Identifies and fills missing `Face` and rod number (`PP`) values based on a provided mapping key. Utilizes dynamic anchor tracking (lookbehind/lookahead) and consecutive streak counting for precise assignments.
-* **Variant Removal:** Automatically detects and removes rows containing duplication of fuel assembly (PS) based on base string extraction, operating from bottom to top to preserve correct row indexing.
+* **Variant Removal:** Automatically detects and removes rows containing duplication of fuel assembly (`PS`) based on base string extraction, operating from bottom to top to preserve correct row indexing.
 * **Format Preservation:** Uses `openpyxl` to perform in-place modifications, ensuring that the original Excel formatting, styling, and unrelated data remain strictly untouched.
 * **Organizational Standards Compliance:** Fully compliant with internal standards, including strict PEP8 formatting enforced by Flake8, comprehensive testing via `pytest`, and automated CI/CD checks via GitHub Actions.
 
