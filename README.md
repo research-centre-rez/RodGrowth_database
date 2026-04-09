@@ -58,7 +58,7 @@ To check for PEP8 compliance and cyclomatic complexity limits:
 Bash
 flake8 src tests --count --select=E9,F63,F7,F82,C901,E203 --show-source --statistics
 Project Structure
-Plaintext
+
 .
 ├── src/
 │   ├── __init__.py
