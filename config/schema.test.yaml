@@ -1,0 +1,30 @@
+# Schema configuration for the TEST dataset (fictional names).
+# Switch via: .\run.ps1 run -Schema test|prod
+#
+# Three categories of values:
+#   1. Sheet names — how Excel tabs are labeled
+#   2. Column names — exact column headers in those sheets
+#   3. Cell values  — actual values that appear inside Side column
+#                     (must match the Excel content character-for-character)
+
+sheets:
+  data: RustDD_Data
+  key: DD_key
+
+key_columns:
+  side: Side
+  dd_no: DD_No
+  out: OUT
+
+data_columns:
+  kampan: Kampan
+  ps: PS
+  side: Side
+  dd: DD
+
+structure:
+  # Side values must match exactly the strings used in the data and key sheets.
+  # Order in this list defines canonical sort order (s1 first, s6 last).
+  side_order: [s1, s2, s3, s4, s5, s6]
+  dd_min: 1
+  dd_max: 11

@@ -32,3 +32,6 @@ Thumbs.db
 # Ignore data files to avoid committing sensitive research data
 # data/*.xlsx
 # *.xlsx
+
+# Schema with real internal terminology — never commit
+config/schema.prod.yaml

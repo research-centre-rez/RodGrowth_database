@@ -1,0 +1,2 @@
+[console_scripts]
+rodgrowth-process = src.main:main

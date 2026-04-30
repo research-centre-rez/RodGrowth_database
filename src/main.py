@@ -1,89 +1,131 @@
+"""Orchestration entry point for the PS measurement processing pipeline."""
+
 import argparse
 import logging
-import pandas as pd
-from pathlib import Path
 import sys
+from pathlib import Path
+from typing import Final
 
-from src.db_processor import build_coordinate_map, process_rust_data_safely
-from src.duplicate_finder import highlight_ps_variants
+from .cleaner import deduplicate, sort_measurements
+from .exporter import export
+from .mapper import map_and_clone
+from .reader import load_key, load_raw_data
+from .validator import resolve_ps_variants, run_validation
 
-# Nastavení logování podle standardů
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-logger = logging.getLogger(__name__)
+logger: Final = logging.getLogger(__name__)
 
 
-def main() -> None:
-    """Main entry point for the Rust data processing pipeline.
+def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser.
 
-    Parses command-line arguments, loads the configuration key, processes
-    the raw coordinate data to fill missing sides, and finally identifies
-    and highlights duplicate/variant pattern samples.
+    Returns:
+        Configured ArgumentParser instance.
     """
     parser = argparse.ArgumentParser(
-        description="Process and validate Rust measurement data."
+        description="PS measurement data cleaning pipeline.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--input", type=str, required=True, help="Path to the input Excel file."
+        "--input",
+        type=Path,
+        required=True,
+        help="Path to the raw machine Excel file.",
     )
     parser.add_argument(
         "--output",
-        type=str,
+        type=Path,
         required=True,
-        help="Path where the processed Excel file will be saved.",
+        help="Path for the cleaned output CSV file.",
     )
     parser.add_argument(
-        "--key",
-        type=str,
-        required=True,
-        help="Path to the Excel file containing the 'DD_key' mapping sheet.",
+        "--report-dir",
+        type=Path,
+        default=Path("output/reports"),
+        help="Directory for validation report CSVs.",
     )
+    parser.add_argument(
+        "--format",
+        choices=["csv", "json"],
+        default="csv",
+        dest="fmt",
+        help="Output format.",
+    )
+    parser.add_argument(
+        "--resolve-variants",
+        choices=["none", "base", "variant"],
+        default="none",
+        dest="resolve_variants",
+        help=(
+            "How to handle PS duplicate pairs (e.g. 'XX01' vs 'XX01_naklon'). "
+            "'base' keeps the plain name and drops the suffixed variant. "
+            "'variant' keeps the suffixed form. 'none' only reports."
+        ),
+    )
+    return parser
 
-    args = parser.parse_args()
 
-    input_path = Path(args.input)
-    output_path = Path(args.output)
-    key_path = Path(args.key)
+def run_pipeline(
+    input_path: Path,
+    output_path: Path,
+    report_dir: Path,
+    fmt: str,
+    resolve_variants: str,
+) -> None:
+    """Execute the full cleaning pipeline.
 
-    if not input_path.exists():
-        logger.error("Input file does not exist: %s", input_path)
-        sys.exit(1)
+    Args:
+        input_path: Path to the source Excel file.
+        output_path: Destination path for cleaned data.
+        report_dir: Directory for validation report CSVs.
+        fmt: Export format ('csv' or 'json').
+        resolve_variants: How to resolve PS variant pairs ('none', 'base', 'variant').
+    """
+    logger.info("=== Pipeline START | input=%s ===", input_path)
 
-    if not key_path.exists():
-        logger.error("Key file does not exist: %s", key_path)
-        sys.exit(1)
-
-    logger.info("Starting data processing pipeline...")
-
-    # Krok 1: Načtení mapovacího klíče
     try:
-        logger.info("Loading key map from %s", key_path)
-        key_df = pd.read_excel(key_path, sheet_name="DD_key")
-        coord_map = build_coordinate_map(key_df)
-    except Exception as e:
-        logger.error("Failed to load and build coordinate map: %s", e)
+        df_key = load_key(input_path)
+        df_raw = load_raw_data(input_path)
+    except (FileNotFoundError, ValueError):
+        logger.exception("Failed during data loading.")
         sys.exit(1)
 
-    # Krok 2: Doplnění chybějících stran
     try:
-        logger.info("Processing coordinates and fixing missing sides...")
-        process_rust_data_safely(str(input_path), str(output_path), coord_map)
-    except Exception as e:
-        logger.error("Error during coordinate processing: %s", e)
+        df_mapped = map_and_clone(df_raw, df_key)
+        df_sorted = sort_measurements(df_mapped)
+        df_clean = deduplicate(df_sorted)
+
+        if resolve_variants != "none":
+            df_clean = resolve_ps_variants(df_clean, keep=resolve_variants)
+    except (KeyError, ValueError):
+        logger.exception("Failed during data transformation.")
         sys.exit(1)
 
-    # Krok 3: Vyhledání a obarvení duplicit
+    run_validation(df_clean, df_key, report_dir)
+
     try:
-        logger.info("Scanning for PS duplicates and variants...")
-        highlight_ps_variants(str(output_path), str(output_path))
-    except Exception as e:
-        logger.error("Error during duplicate highlighting: %s", e)
+        export(df_clean, output_path, fmt=fmt)
+    except (OSError, ValueError):
+        logger.exception("Failed during export.")
         sys.exit(1)
 
-    logger.info("Pipeline finished successfully. Output saved to: %s", output_path)
+    logger.info("=== Pipeline END | output=%s ===", output_path)
+
+
+def main() -> None:
+    """Parse CLI arguments and launch the pipeline."""
+    args = build_parser().parse_args()
+
+    if not args.input.exists():
+        logger.error("Input file does not exist: %s", args.input)
+        sys.exit(1)
+
+    run_pipeline(
+        input_path=args.input,
+        output_path=args.output,
+        report_dir=args.report_dir,
+        fmt=args.fmt,
+        resolve_variants=args.resolve_variants,
+    )
 
 
 if __name__ == "__main__":
