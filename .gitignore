@@ -1,0 +1,37 @@
+# --- Python ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual Environments ---
+# Local library installations
+venv/
+env/
+.env
+
+# --- Testing and Logging ---
+# Pytest temporary files and logs
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# --- IDEs and Editors ---
+# VS Code and other editor settings
+.vscode/
+.idea/
+*.swp
+
+# --- OS Generated Files ---
+# Windows and macOS temporary files
+.DS_Store
+Thumbs.db
+
+# --- Data Files (Optional) ---
+# Ignore data files to avoid committing sensitive research data
+# data/*.xlsx
+# *.xlsx
+
+# Schema with real internal terminology — never commit
+config/schema.prod.yaml
