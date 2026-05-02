@@ -12,6 +12,7 @@ import pandas as pd
 
 from .config import (
     DATA_COL_DD,
+    DATA_COL_SIDE,
     KEY_COL_DD,
     KEY_COL_OUT,
     KEY_COL_SIDE,
@@ -98,17 +99,21 @@ def load_key(source_path: str | Path) -> pd.DataFrame:
 
 
 def load_raw_data(source_path: str | Path) -> pd.DataFrame:
-    """Load raw measurement data from the RustDD_Data sheet.
+    """Load raw measurement data from the data sheet.
+
+    The function tolerates rows that have already been manually translated
+    (Side filled in). Rows without machine coordinate AND without Side
+    are treated as malformed and dropped with a warning.
 
     Args:
         source_path: Path to the Excel file.
 
     Returns:
-        Raw DataFrame as-is from the machine export sheet.
+        Raw DataFrame with the machine coordinate column coerced to nullable int.
 
     Raises:
         FileNotFoundError: If the Excel file does not exist.
-        ValueError: If the DD column is missing.
+        ValueError: If neither the machine coordinate nor Side column exists.
     """
     source_path = Path(source_path)
     if not source_path.exists():
@@ -120,11 +125,17 @@ def load_raw_data(source_path: str | Path) -> pd.DataFrame:
         logger.exception("Failed to read data sheet '%s' from %s.", SHEET_DATA, source_path)
         raise
 
-    if DATA_COL_DD not in df.columns:
-        raise ValueError(f"Data sheet is missing the machine coordinate column '{DATA_COL_DD}'.")
+    has_machine_coord = DATA_COL_DD in df.columns
+    has_side = DATA_COL_SIDE in df.columns
 
-    # Coerce the machine coordinate column to nullable int — bad values become NaN.
-    df[DATA_COL_DD] = pd.to_numeric(df[DATA_COL_DD], errors="coerce").astype("Int64")
+    if not has_machine_coord and not has_side:
+        raise ValueError(
+            f"Data sheet must contain at least one of: "
+            f"machine coordinate column '{DATA_COL_DD}' or logical side column '{DATA_COL_SIDE}'."
+        )
+
+    if has_machine_coord:
+        df[DATA_COL_DD] = pd.to_numeric(df[DATA_COL_DD], errors="coerce").astype("Int64")
 
     logger.info("Raw data loaded: %d rows, %d columns.", *df.shape)
     return df

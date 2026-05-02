@@ -21,6 +21,7 @@ data_columns:
   ps: PS
   side: Side
   dd: DD
+  dd_logical: DD_logical
 
 structure:
   # Side values must match exactly the strings used in the data and key sheets.

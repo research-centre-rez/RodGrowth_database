@@ -12,19 +12,18 @@ from typing import Final, Literal
 import pandas as pd
 
 from .config import (
+    DATA_COL_DD_LOGICAL,
     DATA_COL_KAMPAN,
     DATA_COL_PS,
     DATA_COL_SIDE,
     EXPECTED_ROWS_PER_SAMPLE,
     KEY_COL_DD,
     KEY_COL_SIDE,
+    RESOLVABLE_SUFFIX,
     SIDE_ORDER,
 )
 
 logger: Final = logging.getLogger(__name__)
-
-# Column name for logical wire number (assigned by mapper.py from the key).
-_LOGICAL_DD_COL: Final[str] = "DD_logical"
 
 
 def extract_base_ps(ps_name: str) -> str:
@@ -67,50 +66,70 @@ def resolve_ps_variants(
     df: pd.DataFrame,
     keep: Literal["base", "variant"] = "base",
 ) -> pd.DataFrame:
-    """Remove one side of PS duplicate pairs from the DataFrame.
+    """Remove one side of '_naklon' duplicate pairs from the DataFrame.
 
-    For every group where both a base PS (e.g. 'XX01') and a variant
-    (e.g. 'XX01_naklon') exist, this function drops the unwanted side.
-    Groups where only a base or only a variant exists are left untouched.
+    Only PS pairs where one form is '<base>' and the other is '<base>_naklon'
+    are eligible for resolution. Other suffixes (e.g. '_uxcx', '_test') are
+    treated as legitimate distinct samples and left untouched, even when a
+    base sibling exists in the data — those pairs are reported as variants
+    but never auto-deleted.
 
     Args:
         df: Clean DataFrame after deduplication.
-        keep: Which side to retain.
-            'base'    -- keep 'XX01',        drop 'XX01_naklon'
-            'variant' -- keep 'XX01_naklon', drop 'XX01'
+        keep: Which side of a '_naklon' pair to retain.
+            'base'    -- keep 'XX01',         drop 'XX01_naklon'
+            'variant' -- keep 'XX01_naklon',  drop 'XX01'
 
     Returns:
-        DataFrame with the unwanted PS variants removed.
+        DataFrame with the unwanted side of resolvable '_naklon' pairs removed.
     """
     df = df.copy()
+    df["_ps_str"] = df[DATA_COL_PS].astype(str).str.strip()
     df["_base_ps"] = df[DATA_COL_PS].astype(str).map(extract_base_ps)
-    df["_is_variant"] = df[DATA_COL_PS].astype(str).str.strip() != df["_base_ps"]
 
-    counts = df.groupby("_base_ps")["_is_variant"].nunique()
-    ambiguous_bases = set(counts[counts > 1].index)
+    # A row is a "_naklon variant" if its PS equals base + RESOLVABLE_SUFFIX.
+    naklon_form = df["_base_ps"] + RESOLVABLE_SUFFIX
+    df["_is_naklon"] = df["_ps_str"] == naklon_form
+    df["_is_bare_base"] = df["_ps_str"] == df["_base_ps"]
 
-    if not ambiguous_bases:
-        logger.info("resolve_ps_variants: no conflicting pairs found, nothing removed.")
-        return df.drop(columns=["_base_ps", "_is_variant"])
+    # Find bases that have BOTH a bare form AND a naklon form in the data.
+    bases_with_naklon = set(df.loc[df["_is_naklon"], "_base_ps"].unique())
+    bases_with_bare = set(df.loc[df["_is_bare_base"], "_base_ps"].unique())
+    resolvable_bases = bases_with_naklon & bases_with_bare
+
+    if not resolvable_bases:
+        logger.info(
+            "resolve_ps_variants: no '%s' pairs found, nothing removed.",
+            RESOLVABLE_SUFFIX,
+        )
+        return df.drop(columns=["_ps_str", "_base_ps", "_is_naklon", "_is_bare_base"])
 
     logger.info(
-        "Resolving %d conflicting PS group(s): %s. Keeping: '%s'.",
-        len(ambiguous_bases),
-        sorted(ambiguous_bases),
+        "Resolving %d '%s' pair(s): %s. Keeping: '%s'.",
+        len(resolvable_bases),
+        RESOLVABLE_SUFFIX,
+        sorted(resolvable_bases),
         keep,
     )
 
     if keep == "base":
-        mask_drop = df["_base_ps"].isin(ambiguous_bases) & df["_is_variant"]
-    else:
-        mask_drop = df["_base_ps"].isin(ambiguous_bases) & ~df["_is_variant"]
+        # Drop naklon rows whose base is in resolvable set.
+        mask_drop = df["_base_ps"].isin(resolvable_bases) & df["_is_naklon"]
+    else:  # keep == "variant"
+        # Drop bare base rows whose base is in resolvable set.
+        mask_drop = df["_base_ps"].isin(resolvable_bases) & df["_is_bare_base"]
 
     rows_before = len(df)
-    df = df[~mask_drop].drop(columns=["_base_ps", "_is_variant"]).reset_index(drop=True)
+    df = (
+        df[~mask_drop]
+        .drop(columns=["_ps_str", "_base_ps", "_is_naklon", "_is_bare_base"])
+        .reset_index(drop=True)
+    )
 
     logger.info(
-        "Removed %d row(s) belonging to the discarded PS variant(s).",
+        "Removed %d row(s) belonging to discarded '%s' side.",
         rows_before - len(df),
+        RESOLVABLE_SUFFIX,
     )
     return df
 
@@ -143,7 +162,7 @@ def check_sample_completeness(
     Raises:
         KeyError: If required columns are missing from df.
     """
-    required = {DATA_COL_KAMPAN, DATA_COL_PS, DATA_COL_SIDE, _LOGICAL_DD_COL}
+    required = {DATA_COL_KAMPAN, DATA_COL_PS, DATA_COL_SIDE, DATA_COL_DD_LOGICAL}
     missing_cols = required - set(df.columns)
     if missing_cols:
         raise KeyError(f"Cannot check completeness — missing columns: {missing_cols}")
@@ -178,7 +197,7 @@ def check_sample_completeness(
         present_positions: set[tuple[str, int]] = set(
             zip(
                 df.loc[sample_mask, DATA_COL_SIDE].astype(str),
-                df.loc[sample_mask, _LOGICAL_DD_COL].astype(int),
+                df.loc[sample_mask, DATA_COL_DD_LOGICAL].astype(int),
                 strict=True,
             )
         )
@@ -203,27 +222,59 @@ def check_sample_completeness(
 def find_ps_variants(df: pd.DataFrame) -> pd.DataFrame:
     """Identify PS values that are variants of a base name.
 
-    Groups all PS strings by their extracted base. Any string longer than
-    its base is flagged as a variant (e.g. 'XX01_rerun' vs 'XX01').
+    A 'true variant' is a PS string with a suffix that ALSO has a sibling
+    PS without that suffix in the same dataset (e.g. 'XX01_naklon' alongside 'XX01').
+
+    A PS string with a suffix but no base sibling (e.g. 'XX01_uxcx' alone)
+    is treated as a unique sample, not a variant — its longer name is just
+    descriptive, not a duplicate marker.
 
     Args:
         df: DataFrame containing the PS column.
 
     Returns:
-        DataFrame of variant rows with columns [Kampan, PS, base_ps].
-        Empty if no variants found.
+        DataFrame of true-variant rows with columns
+        [Kampan, PS, base_ps, base_present_in_data].
+        Empty if no true variants found.
     """
     df = df.copy()
     df["base_ps"] = df[DATA_COL_PS].astype(str).map(extract_base_ps)
-    df["is_variant"] = df[DATA_COL_PS].astype(str).str.strip() != df["base_ps"]
+    df["is_suffixed"] = df[DATA_COL_PS].astype(str).str.strip() != df["base_ps"]
 
-    variants = df[df["is_variant"]][[DATA_COL_KAMPAN, DATA_COL_PS, "base_ps"]].copy()
-    variants = variants.drop_duplicates().reset_index(drop=True)
+    # For each base, check whether ANY row has the bare base form (no suffix).
+    bases_present_as_bare = set(df.loc[~df["is_suffixed"], "base_ps"].unique())
+
+    df["base_present_in_data"] = df["base_ps"].isin(bases_present_as_bare)
+
+    # A true variant: has a suffix AND its base exists in the data as a bare row.
+    is_true_variant = df["is_suffixed"] & df["base_present_in_data"]
+
+    variants = (
+        df.loc[
+            is_true_variant,
+            [DATA_COL_KAMPAN, DATA_COL_PS, "base_ps"],
+        ]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
 
     if variants.empty:
-        logger.info("PS variant check: no variants found.")
+        logger.info("PS variant check: no true variant pairs found.")
     else:
-        logger.warning("Found %d unique PS variant(s).", len(variants))
+        logger.warning(
+            "Found %d true variant(s) — both base and suffixed form exist: %s",
+            len(variants),
+            variants[DATA_COL_PS].tolist(),
+        )
+
+    # Also log suffixed lone samples for awareness, but don't add them to report.
+    is_suffixed_lone = df["is_suffixed"] & ~df["base_present_in_data"]
+    lone_count = df.loc[is_suffixed_lone, DATA_COL_PS].nunique()
+    if lone_count:
+        logger.info(
+            "Found %d suffixed lone sample(s) (no base sibling) — treated as unique, not variants.",
+            lone_count,
+        )
 
     return variants
 

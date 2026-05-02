@@ -68,7 +68,7 @@ param(
     [ValidateSet('install', 'run', 'test', 'lint', 'clean', 'help')]
     [string]$Task = 'help',
 
-    [string]$InputFile = 'data\raw_machine_output.xlsx',
+    [string]$InputFile = 'data\Databaze_rustu_DD-test.xlsx',
     [string]$OutputFile = 'output\clean.csv',
     [string]$Reports = 'output\reports',
 

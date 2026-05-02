@@ -6,6 +6,7 @@ from typing import Final
 import pandas as pd
 
 from .config import (
+    DATA_COL_DD_LOGICAL,
     DATA_COL_KAMPAN,
     DATA_COL_PS,
     DATA_COL_SIDE,
@@ -18,13 +19,13 @@ _SORT_COLS: Final[list[str]] = [
     DATA_COL_KAMPAN,
     DATA_COL_PS,
     DATA_COL_SIDE,
-    "DD_logical",
+    DATA_COL_DD_LOGICAL,
 ]
 _DEDUP_COLS: Final[list[str]] = [
     DATA_COL_KAMPAN,
     DATA_COL_PS,
     DATA_COL_SIDE,
-    "DD_logical",
+    DATA_COL_DD_LOGICAL,
 ]
 
 

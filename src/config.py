@@ -76,6 +76,7 @@ def _validate_schema(schema: dict, schema_path: Path) -> None:
         "key_columns": ["side", "dd_no", "out"],
         "data_columns": ["kampan", "ps", "side", "dd"],
         "structure": ["side_order", "dd_min", "dd_max"],
+        "data_columns": ["kampan", "ps", "side", "dd", "dd_logical"],
     }
 
     for section, keys in required.items():
@@ -109,9 +110,17 @@ DATA_COL_KAMPAN: Final[str] = _SCHEMA["data_columns"]["kampan"]
 DATA_COL_PS: Final[str] = _SCHEMA["data_columns"]["ps"]
 DATA_COL_SIDE: Final[str] = _SCHEMA["data_columns"]["side"]
 DATA_COL_DD: Final[str] = _SCHEMA["data_columns"]["dd"]
+DATA_COL_DD_LOGICAL: Final[str] = _SCHEMA["data_columns"]["dd_logical"]
 
 # --- Logical structure ---
 SIDE_ORDER: Final[list[str]] = [str(s) for s in _SCHEMA["structure"]["side_order"]]
 DD_MIN: Final[int] = int(_SCHEMA["structure"]["dd_min"])
 DD_MAX: Final[int] = int(_SCHEMA["structure"]["dd_max"])
 EXPECTED_ROWS_PER_SAMPLE: Final[int] = len(SIDE_ORDER) * (DD_MAX - DD_MIN + 1)
+
+# --- PS variant resolution ---
+# Suffix that marks a "tilt" measurement variant — these are duplicates of the base
+# sample taken from a different angle, and one of them should be kept while the
+# other is dropped via --resolve-variants. Only this exact suffix is auto-resolved;
+# other suffixes (e.g. '_uxcx') are treated as legitimate distinct samples.
+RESOLVABLE_SUFFIX: Final[str] = "_naklon"
