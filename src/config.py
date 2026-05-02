@@ -74,7 +74,6 @@ def _validate_schema(schema: dict, schema_path: Path) -> None:
     required = {
         "sheets": ["data", "key"],
         "key_columns": ["side", "dd_no", "out"],
-        "data_columns": ["kampan", "ps", "side", "dd"],
         "structure": ["side_order", "dd_min", "dd_max"],
         "data_columns": ["kampan", "ps", "side", "dd", "dd_logical"],
     }
